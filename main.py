@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -35,13 +37,15 @@ def inicio():
 
 # GET: consultar todos los productos
 @app.get("/productos")
-def obtener_productos():
+async def obtener_productos():
+    await asyncio.sleep(0)
     return inventario
 
 
 # POST: agregar un nuevo producto
 @app.post("/productos", status_code=201)
-def agregar_producto(producto: Producto):
+async def agregar_producto(producto: Producto):
+    await asyncio.sleep(0)
     nuevo_producto = {
         "id": max((p["id"] for p in inventario), default=0) + 1,
         "nombre": producto.nombre.strip(),
@@ -61,7 +65,8 @@ def agregar_producto(producto: Producto):
 
 # DELETE: eliminar un producto por su ID
 @app.delete("/productos/{producto_id}")
-def eliminar_producto(producto_id: int):
+async def eliminar_producto(producto_id: int):
+    await asyncio.sleep(0)
     for indice, producto in enumerate(inventario):
         if producto["id"] == producto_id:
             producto_eliminado = inventario.pop(indice)
