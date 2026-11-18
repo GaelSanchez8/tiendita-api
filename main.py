@@ -3,6 +3,7 @@ import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import pandas as pd
 
 app = FastAPI(title="API de Tienda")
 
@@ -38,20 +39,27 @@ def inicio():
 # GET: consultar todos los productos
 @app.get("/productos")
 async def obtener_productos():
-    await asyncio.sleep(0)
-    return inventario
+    df = pd.read_csv("productos.csv")
+    return df.to_dict(orient="records")         # Lo convierto a una lista de diccionarios para que FastAPI lo pueda serializar a JSON
 
 
 # POST: agregar un nuevo producto
 @app.post("/productos", status_code=201)
 async def agregar_producto(producto: Producto):
-    await asyncio.sleep(0)
+    df = pd.read_csv("productos.csv")
+    nuevo_id = 1 if df.empty else int(df["id"].max()) + 1
     nuevo_producto = {
-        "id": max((p["id"] for p in inventario), default=0) + 1,
+        "id": nuevo_id,
         "nombre": producto.nombre.strip(),
         "precio": producto.precio,
         "cantidad": producto.cantidad,
-    }
+    }   
+
+    df = pd.concat([df, pd.DataFrame([nuevo_producto])], ignore_index=True)
+    df.to_csv("productos.csv", index=False)  # Guarda el DataFrame actualizado en el archivo CSV
+
+    return nuevo_producto
+
 
     if not nuevo_producto["nombre"]:
         raise HTTPException(
