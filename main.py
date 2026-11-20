@@ -73,17 +73,19 @@ async def agregar_producto(producto: Producto):
 
 # DELETE: eliminar un producto por su ID
 @app.delete("/productos/{producto_id}")
-async def eliminar_producto(producto_id: int):
-    await asyncio.sleep(0)
-    for indice, producto in enumerate(inventario):
-        if producto["id"] == producto_id:
-            producto_eliminado = inventario.pop(indice)
-            return {
-                "mensaje": "Producto eliminado correctamente",
-                "producto": producto_eliminado,
-            }
+async def eliminar_producto(producto_id: int): 
+    df = pd.read_csv("productos.csv")
+    #Da un error 404 si no existel producto con el ID especificado
+    if producto_id not in df["id"].values: 
+        raise HTTPException(
+            status_code=404,
+            detail="Producto no encontrado",
+        )
+    producto_eliminado = df[df["id"] == producto_id].to_dict(orient="records")[0]
+    df = df[df["id"] != producto_id]
+    df.to_csv("productos.csv", index=False)  # Guarda el DataFrame actualizado en
 
-    raise HTTPException(
-        status_code=404,
-        detail="Producto no encontrado",
-    )
+    return {
+        "mensaje": "Producto eliminado correctamente",
+        "producto_eliminado": producto_eliminado,
+    }
