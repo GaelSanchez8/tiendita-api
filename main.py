@@ -132,3 +132,50 @@ async def comprar_producto(producto_id: int, compra: COMPRA):
     return {
         "mensaje": "Compra realizada correctamente",
         "venta": venta,}
+
+#Tarjeta de analítica para obtener KPIs, ingresos por producto y ventas por fecha   
+@app.get("/analitica/kpis")
+async def obtener_kpis():
+    ventas = pd.read_csv(RUTA_VENTAS)
+
+    if ventas.empty:
+        return {
+            "producto_estrella": None,
+            "ingresos_totales": 0,
+            "transacciones": 0,
+            "ticket_promedio": 0,
+        }
+
+    unidades_por_producto = ventas.groupby("producto")["cantidad"].sum()
+    ingresos = round(float(ventas["total"].sum()), 2)
+    transacciones = len(ventas)
+
+    return {
+        "producto_estrella": str(unidades_por_producto.idxmax()),
+        "ingresos_totales": ingresos,
+        "transacciones": transacciones,
+        "ticket_promedio": round(ingresos / transacciones, 2),
+    }
+
+
+@app.get("/analitica/ingresos-por-producto")
+async def ingresos_por_producto():
+    ventas = pd.read_csv(RUTA_VENTAS)
+
+    if ventas.empty:
+        return []
+
+    agrupado = ventas.groupby("producto", as_index=False)["total"].sum()
+    return agrupado.to_dict(orient="records")
+
+
+@app.get("/analitica/ventas-por-fecha")
+async def ventas_por_fecha():
+    ventas = pd.read_csv(RUTA_VENTAS)
+
+    if ventas.empty:
+        return []
+
+    ventas["dia"] = ventas["fecha"].str[:10]
+    agrupado = ventas.groupby("dia", as_index=False)["total"].sum()
+    return agrupado.to_dict(orient="records")
