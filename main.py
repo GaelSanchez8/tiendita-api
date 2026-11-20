@@ -131,9 +131,10 @@ async def comprar_producto(producto_id: int, compra: COMPRA):
 
     return {
         "mensaje": "Compra realizada correctamente",
-        "venta": venta,}
+        "venta": venta,
+    }
 
-#Tarjeta de analítica para obtener KPIs, ingresos por producto y ventas por fecha   
+#Tarjeta de analítica para obtener KPIs, ingresos por producto y ventas por fecha
 @app.get("/analitica/kpis")
 async def obtener_kpis():
     ventas = pd.read_csv(RUTA_VENTAS)
