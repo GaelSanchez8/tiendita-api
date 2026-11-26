@@ -1,4 +1,1 @@
-fecha,producto,precio,cantidad,total
-2026-11-19 23:06:30,Mousepad XL,14.99,1,14.99
-2026-11-19 23:06:42,Mousepad XL,14.99,1,14.99
-2026-11-20 17:11:44,Teclado mecánico RGB,79.99,1,79.99
+id_venta,fecha,producto,precio,cantidad,monto_total

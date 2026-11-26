@@ -195,7 +195,7 @@ function dibujarGraficaProductos(datos) {
             labels: datos.map(d => d.producto),
             datasets: [{
                 label: "Ingresos ($)",
-                data: datos.map(d => d.total),
+                data: datos.map(d => d.monto_total),
                 backgroundColor: "#0d6efd"
             }]
         },
@@ -218,7 +218,7 @@ function dibujarGraficaFechas(datos) {
             labels: datos.map(d => d.dia),
             datasets: [{
                 label: "Ingresos ($)",
-                data: datos.map(d => d.total),
+                data: datos.map(d => d.monto_total),
                 borderColor: "#0d6efd",
                 tension: 0.3
             }]
