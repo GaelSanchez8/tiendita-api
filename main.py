@@ -115,7 +115,8 @@ async def comprar_producto(producto_id: int, compra: Compra):
             "monto_total": round(float(producto["precio"]) * compra.cantidad, 2)        
         }
 
-        ventas = pd.concat([ventas, pd.DataFrame([venta])], ignore_index=True)
+        nueva_venta = pd.DataFrame([venta])
+        ventas = nueva_venta if ventas.empty else pd.concat([ventas, nueva_venta], ignore_index=True)
         ventas.to_csv(RUTA_VENTAS, index=False)
 
     return {"mensaje": "Compra realizada correctamente", "venta": venta,}
