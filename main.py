@@ -29,7 +29,7 @@ class Producto(BaseModel):
     precio: float = Field(ge=0)
     cantidad: int = Field(ge=0)
 
-class COMPRA(BaseModel):
+class Compra(BaseModel):
     cantidad: int = Field(gt=0)
 
 
@@ -47,36 +47,24 @@ async def obtener_productos():
 
 # POST: agregar un nuevo producto
 @app.post("/productos", status_code=201)
-async def agregar_producto(producto: Producto):
-    df = pd.read_csv(RUTA_PRODUCTOS)
-    nombre = producto.nombre.strip()
-    if not nombre:
-        raise HTTPException(
-            status_code=400,
-            detail="El nombre del producto no puede estar vacío",
-        )
+async def agregar_prodcto(producto: Producto):
+    async with lock:
+        df = pd.read_csv(RUTA_PRODUCTOS)
 
-    nuevo_id = 1 if df.empty else int(df["id"].max()) + 1
-    nuevo_producto = {
-        "id": nuevo_id,
-        "nombre": nombre,
-        "precio": producto.precio,
-        "cantidad": producto.cantidad,
-    }   
+        nombre = producto.nombre.strip()
+        if not nombre:
+            raise HTTPException(status_code=400,  detail="El nombre del producto no puede estar vacio")
 
-    df = pd.concat([df, pd.DataFrame([nuevo_producto])], ignore_index=True)
-    df.to_csv(RUTA_PRODUCTOS, index=False)  # Guarda el DataFrame actualizado en el archivo CSV
+        nuevo_id = 1 if df.empty else int(df["id"].max()) + 1
+        nuevo_producto = {
+            "id": nuevo_id,
+            "nombre": nombre,
+            "precio": producto.precio,
+            "cantidad": producto.cantidad,
+        }
 
-    return nuevo_producto
-
-
-    if not nuevo_producto["nombre"]:
-        raise HTTPException(
-            status_code=400,
-            detail="El nombre del producto no puede estar vacío",
-        )
-
-    inventario.append(nuevo_producto)
+        df = pd.concat([df, pd.DataFrame([nuevo_producto])], ignore_index = True)
+        df.to_csv(RUTA_PRODUCTOS, index=False)
     return nuevo_producto
 
 
@@ -89,21 +77,21 @@ async def eliminar_producto(producto_id: int):
         if producto_id not in df["id"].values:
             raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-        producto_eliminado = df[df["id"] == producto_id].to_dict(orient="records")
+        producto_eliminado = df[df["id"] == producto_id].to_dict(orient="records")[0]
         df = df[df["id"] != producto_id]
         df.to_csv(RUTA_PRODUCTOS, index=False)
 
     return {"mensaje": "Producto eliminado correctamente", "producto": producto_eliminado}
 
 @app.post("/productos/{producto_id}")
-async def comprar_producto(producto_id: int, compra: COMPRA):
+async def comprar_producto(producto_id: int, compra: Compra):
     async with lock:
         df = pd.read_csv(RUTA_PRODUCTOS)
 
         if producto_id not in df["id"].values:
             raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-        indice = df.index[df["id"] == producto_id[0]]
+        indice = df.index[df["id"] == producto_id][0]
         producto = df.loc[indice]
 
         #Error 400 si la cantidad solicitada excede el stock disponible
