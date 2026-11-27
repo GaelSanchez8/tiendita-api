@@ -5,13 +5,88 @@ from pydantic import BaseModel, Field
 import pandas as pd
 from datetime import datetime
 import asyncio
+import polars as pl
+
+
+ESQUEMA_VENTAS = {
+    "id_venta": pl.Int64,
+    "fecha": pl.String,
+    "producto": pl.String,
+    "precio": pl.Float64,
+    "cantidad": pl.Float64,
+    "monto_total": pl.Float64,
+}
 
 app = FastAPI(title="API de Tienda")
 lock = asyncio.Lock()  # Lock para manejar la concurrencia en operaciones de escritura
 
+
 BASE_DIR = Path(__file__).resolve().parent
+RUTA_PARQUET = BASE_DIR / "ventas.parquet"
 RUTA_PRODUCTOS = BASE_DIR / "productos.csv"
 RUTA_VENTAS = BASE_DIR / "ventas.csv"
+
+#Cargar el archivo de ventas y cambiar el tipo de cada columna del csv 
+#para que coincida con el del Parquet
+def cargar_ventas():
+    historico = pl.scan_parquet(RUTA_PARQUET)
+    recientes = pl.scan_csv(RUTA_VENTAS).with_columns(
+        pl.col("id_venta").cast(pl.Int64),
+        pl.col("fecha").cast(pl.String),
+        pl.col("producto").cast(pl.String),
+        pl.col("precio").cast(pl.Float64),
+        pl.col("cantidad").cast(pl.Int64),
+        pl.col("monto_total").cast(pl.Float64),
+    )
+
+    return pl.concat([historico, recientes])
+
+#endpoint para probar la funcion de cargar ventas
+@app.get("/api/analisis/kpis")
+async def kpis_polars():
+    ventas = cargar_ventas().collect()
+
+    if ventas.height == 0:
+        return {
+            "producto_estrella": None,
+            "ingresos_totales": 0,
+            "transacciones": 0,
+            "ticket_promedio": 0,
+        }
+    producto_estrella = (
+        ventas.group_by("producto")
+        .agg(pl.col("cantidad").sum().alias("unidades"))
+        .sort("unidades", descending=True)
+        .row(0)[0]
+    )
+    ingresos = round(ventas["monto_total"].sum(), 2)
+    transacciones = ventas.height
+
+    return {
+        "producto_estrella": producto_estrella,
+        "ingresos_totales": ingresos,
+        "transacciones": transacciones,
+        "ticket_promedio": round(ingresos / transacciones, 2)
+    }
+
+
+#Endpoint de los productos mas vendidos
+@app.get("/api/analisis/mas-vendidos")
+async def mas_vendidas():
+    ventas = cargar_ventas().collect()
+
+    if ventas.height == 0:
+        return[]
+
+    resultado = (
+        ventas.group_by("producto")
+        .agg(
+            pl.col("cantidad").sum().alias("unidades"),
+            pl.col("monto_total").sum().round(2).alias("ingresos"),
+        )
+        .sort("unidades", descending=True)
+    )
+    return resultado.to_dicts()
 
 # Permite que el cliente (por ejemplo, Live Server en otro puerto)
 # pueda comunicarse con esta API.
