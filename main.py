@@ -6,7 +6,8 @@ import pandas as pd
 from datetime import datetime
 import asyncio
 import polars as pl
-
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 ESQUEMA_VENTAS = {
     "id_venta": pl.Int64,
@@ -17,29 +18,58 @@ ESQUEMA_VENTAS = {
     "monto_total": pl.Float64,
 }
 
-app = FastAPI(title="API de Tienda")
+scheduler = AsyncIOScheduler()
 lock = asyncio.Lock()  # Lock para manejar la concurrencia en operaciones de escritura
 
+""" Esto es para que el corte de caja se ejecute solo sin tener que llamarlo mientras el servidor
+puede seguir atendiendo servidores  """
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler.add_job(corte_de_caja, "interval", minutes=2, id="corte_de_caja")
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+app = FastAPI(title="API de LUNIX", lifespan=lifespan)
 
 BASE_DIR = Path(__file__).resolve().parent
 RUTA_PARQUET = BASE_DIR / "ventas.parquet"
 RUTA_PRODUCTOS = BASE_DIR / "productos.csv"
 RUTA_VENTAS = BASE_DIR / "ventas.csv"
 
+
 #Cargar el archivo de ventas y cambiar el tipo de cada columna del csv 
 #para que coincida con el del Parquet
-def cargar_ventas():
-    historico = pl.scan_parquet(RUTA_PARQUET)
-    recientes = pl.scan_csv(RUTA_VENTAS).with_columns(
+def leer_ventas_csv():
+    return pl.scan_csv(RUTA_VENTAS).with_columns(
         pl.col("id_venta").cast(pl.Int64),
         pl.col("fecha").cast(pl.String),
         pl.col("producto").cast(pl.String),
         pl.col("precio").cast(pl.Float64),
         pl.col("cantidad").cast(pl.Int64),
         pl.col("monto_total").cast(pl.Float64),
+            
     )
 
-    return pl.concat([historico, recientes])
+def cargar_ventas():
+    historico = pl.scan_parquet(RUTA_PARQUET)
+    return pl.concat([historico, leer_ventas_csv()])
+
+
+async def corte_de_caja():
+    async with lock:
+        recientes = leer_ventas_csv().collect()
+
+        if recientes.height == 0:
+            return
+
+        historico = pl.read_parquet(RUTA_PARQUET)
+        pl.concat([historico, recientes]).write_parquet(RUTA_PARQUET)
+
+        #vacia ventas.csv dejando solo el encabezado
+        recientes.clear().write_csv(RUTA_VENTAS)
+
 
 #endpoint para probar la funcion de cargar ventas
 @app.get("/api/analisis/kpis")
