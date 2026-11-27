@@ -82,11 +82,28 @@ async def mas_vendidas():
         ventas.group_by("producto")
         .agg(
             pl.col("cantidad").sum().alias("unidades"),
-            pl.col("monto_total").sum().round(2).alias("ingresos"),
+            pl.col("monto_total").sum().round(2).alias("monto_total"),
         )
         .sort("unidades", descending=True)
     )
     return resultado.to_dicts()
+
+
+@app.get("/api/analisis/ventas-por-fecha")
+async def ventas_por_fecha_polars():
+    ventas = cargar_ventas().collect()
+
+    if ventas.height == 0:
+        return[]
+
+    resultado = (
+        ventas.with_columns(pl.col("fecha").str.slice(0, 10).alias("dia")) #toma los primero 10 caracteres de la fecha
+        .group_by("dia")
+        .agg(pl.col("monto_total").sum().round(2).alias("monto_total"))
+        .sort("dia") #ordena la fecha de la mas antigua a la mas reciente
+    )
+    return resultado.to_dicts()
+
 
 # Permite que el cliente (por ejemplo, Live Server en otro puerto)
 # pueda comunicarse con esta API.

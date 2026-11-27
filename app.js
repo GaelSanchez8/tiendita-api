@@ -1,7 +1,7 @@
 
 const API_URL = "http://127.0.0.1:8000/productos";
-
 const ANALITICA_URL = "http://127.0.0.1:8000/analitica";
+const POLARS_URL = "http://127.0.0.1:8000/api/analisis";
 
 const kpiProductoEstrella = document.getElementById("kpiProductoEstrella");
 const kpiIngresos = document.getElementById("kpiIngresos");
@@ -174,7 +174,7 @@ function llenarSelect(productos) {
 
 // KPIs: tarjetas con los datos simples de la API
 async function cargarKpis() {
-    const respuesta = await fetch(`${ANALITICA_URL}/kpis`);
+    const respuesta = await fetch(`${POLARS_URL}/kpis`);
     const kpis = await respuesta.json();
 
     kpiProductoEstrella.textContent = kpis.producto_estrella ?? "-";
@@ -230,8 +230,8 @@ function dibujarGraficaFechas(datos) {
 // Pide las dos series a la API y dibuja ambas gráficas
 async function cargarGraficas() {
     const [respuestaProductos, respuestaFechas] = await Promise.all([
-        fetch(`${ANALITICA_URL}/ingresos-por-producto`),
-        fetch(`${ANALITICA_URL}/ventas-por-fecha`)
+        fetch(`${POLARS_URL}/mas-vendidos`),
+        fetch(`${POLARS_URL}/ventas-por-fecha`)
     ]);
 
     dibujarGraficaProductos(await respuestaProductos.json());
