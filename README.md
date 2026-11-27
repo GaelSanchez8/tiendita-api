@@ -14,7 +14,7 @@ Pydantic valida los datos de entrada, por ejemplo que el precio no sea negativo 
 El inventario se guarda en `productos.csv` y cada compra se registra en `ventas.csv`. Pandas calcula los KPIs y las series para las gráficas, y Chart.js dibuja las gráficas de ingresos por producto y ventas por fecha en el dashboard.
 
 ### Unidad 4: Big Data y operación 24/7
-`generar_parquet.py` crea 1.5 millones de ventas simuladas con NumPy y Polars, usando los productos reales del catálogo, y las guarda en `ventas.parquet` con el mismo esquema que `ventas.csv`. Los endpoints `/api/analisis/...` leen el histórico con Polars (`scan_parquet` y `scan_csv`) y lo unen con las ventas recientes usando `pl.concat()`, sin modificar el Parquet durante las compras. APScheduler ejecuta cada cierto tiempo el corte de caja, que pasa las ventas del CSV al Parquet y vacía `ventas.csv`, todo dentro del mismo lock.
+`generar_parquet.py` crea 1.5 millones de ventas simuladas con NumPy y Polars, usando los productos reales del catálogo, y las guarda en `ventas.parquet` con el mismo esquema que `ventas.csv`. Los endpoints `/api/analisis/...` leen el histórico con Polars (`scan_parquet` y `scan_csv`) y lo unen con las ventas recientes usando `pl.concat()`, sin modificar el Parquet durante las compras. APScheduler ejecuta cada cierto tiempo el corte de caja, que pasa las ventas del CSV al Parquet y vacía `ventas.csv`, todo dentro del mismo lock. El corte de caja está configurado para ejecutarse cada 2 minutos como demostración. Para un corte diario, se puede cambiar la programación en `main.py` por `scheduler.add_job(corte_de_caja, "cron", hour=0, minute=0, id="corte_de_caja")`.
 
 ## Tecnologías y librerías
 - FastAPI y Uvicorn
